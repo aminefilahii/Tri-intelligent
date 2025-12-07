@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Classification en temps réel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    video { border-radius: 8px; }
+    #result { font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Tri‑intelligent</a>
+    </div>
+  </nav>
+  <div class="container mt-4">
+    <div class="row justify-content-center">
+      <div class="col-md-6 text-center">
+        <h2 class="mb-3">Classification des déchets</h2>
+        <video id="video" autoplay playsinline width="320" height="240" class="mb-2 shadow"></video>
+        <canvas id="canvas" width="224" height="224" style="display:none;"></canvas>
+        <div class="d-grid gap-2 col-6 mx-auto my-3">
+          <button class="btn btn-primary" id="snap">Capturer &amp; Classifier</button>
+        </div>
+        <div id="result" class="alert d-none" role="alert"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const API_URL = "/predict";
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const resultDiv = document.getElementById('result');
+
+    // Demande l'accès à la webcam
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+      video.srcObject = stream;
+    });
+
+    document.getElementById('snap').onclick = async function() {
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, 224, 224);
+      canvas.toBlob(async blob => {
+        const form = new FormData();
+        form.append("file", blob, "frame.jpg");
+        const response = await fetch(API_URL, { method: "POST", body: form });
+        const data = await response.json();
+        resultDiv.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning', 'alert-secondary');
+        // Choisir une classe de couleur Bootstrap selon le bac
+        let alertClass = 'alert-secondary';
+        if (data.bin === 'Verre') alertClass = 'alert-success';
+        else if (data.bin === 'Plastique') alertClass = 'alert-warning';
+        else if (data.bin === 'Métal') alertClass = 'alert-secondary';
+        else if (data.bin === 'Emballages & papiers') alertClass = 'alert-info';
+        else if (data.bin === 'Non recyclable') alertClass = 'alert-dark';
+        resultDiv.classList.add('alert', alertClass);
+        resultDiv.innerHTML = `<strong>Type&nbsp;:</strong> ${data.label}<br><strong>Bac&nbsp;:</strong> ${data.bin}<br><strong>Confiance&nbsp;:</strong> ${(data.proba * 100).toFixed(1)} %`;
+      }, 'image/jpeg');
+    };
+  </script>
+</body>
+</html>
