@@ -5,29 +5,109 @@
   <title>Tri‑intelligent</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background-color:#f8f9fa; }
-    .hero { padding: 60px 0; }
+    /* 1. Le fond animé (Base claire) */
+    #vanta-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+    }
+
+    body { 
+        background-color: transparent;
+        color: #2c3e50; /* Texte gris foncé pour le contraste sur fond clair */
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* 2. Effet "Verre givré" BLANC pour le contenu */
+    .content-box {
+        background-color: rgba(255, 255, 255, 0.85); /* Blanc à 85% d'opacité */
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(31, 135, 60, 0.15); /* Ombre portée verte douce */
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .hero { padding: 80px 0; }
+
+    /* Titres en vert écologie */
+    h1, h2 { color: #198754; font-weight: 700; }
+    
+    .navbar {
+        background: rgba(25, 135, 84, 0.95) !important; /* Vert Bootstrap un peu transparent */
+        backdrop-filter: blur(5px);
+    }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+
+  <div id="vanta-bg"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
     <div class="container-fluid">
-      <a class="navbar-brand" href="/">Tri‑intelligent</a>
+      <a class="navbar-brand fw-bold" href="/">🌿 Tri‑intelligent</a>
     </div>
   </nav>
+
   <div class="container hero text-center">
-    <h1 class="mb-4">Bienvenue sur Tri‑intelligent</h1>
-    <p class="lead mb-4">Cette application utilise l'intelligence artificielle pour
-      classer vos déchets en temps réel et vous indiquer le bon bac de tri.</p>
-    <a href="/webcam" class="btn btn-primary btn-lg">Démarrer la classification</a>
+    <div class="content-box">
+        <h1 class="mb-4">Bienvenue sur Tri‑intelligent</h1>
+        <p class="lead mb-4 text-muted">
+            L'intelligence artificielle au service de la planète.<br>
+            Classez vos déchets en temps réel pour un recyclage parfait.
+        </p>
+        <a href="/webcam" class="btn btn-success btn-lg px-5 py-3 shadow">
+            Démarrer la classification ♻️
+        </a>
+    </div>
   </div>
+
   <div class="container mb-5">
-    <h2>Fonctionnement</h2>
-    <ul>
-      <li>Capturez une image de votre déchet avec votre webcam.</li>
-      <li>L'IA analyse l'image et prédit sa catégorie (verre, plastique, métal, papier/emballage, ou non recyclable).</li>
-      <li>La couleur du bac correspondante s'affiche pour vous aider à trier.</li>
-    </ul>
+    <div class="content-box">
+        <h2 class="border-bottom pb-3 mb-4" style="border-color: #a3cfbb !important;">Comment ça marche ?</h2>
+        <ul class="list-group list-group-flush bg-transparent">
+          <li class="list-group-item bg-transparent border-0 d-flex align-items-center">
+            <span class="badge bg-success rounded-pill me-3">1</span> 
+            Capturez une image de votre déchet avec votre webcam.
+          </li>
+          <li class="list-group-item bg-transparent border-0 d-flex align-items-center">
+            <span class="badge bg-success rounded-pill me-3">2</span> 
+            L'IA analyse l'image (verre, plastique, papier, etc.).
+          </li>
+          <li class="list-group-item bg-transparent border-0 d-flex align-items-center">
+            <span class="badge bg-success rounded-pill me-3">3</span> 
+            Le bon bac de tri s'affiche instantanément.
+          </li>
+        </ul>
+    </div>
   </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.fog.min.js"></script>
+  
+  <script>
+    VANTA.FOG({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      
+      // --- NOUVELLE PALETTE ÉCOLOGIE DOUCE ---
+      highlightColor: 0xb8e9c0, // Vert menthe très clair (lumière)
+      midtoneColor: 0x74c69d,   // Vert sauge (nuances)
+      lowlightColor: 0x40916c,  // Vert feuille (profondeur)
+      baseColor: 0xffffff,      // Fond blanc pur
+      
+      blurFactor: 0.8,          // Plus de flou pour plus de douceur
+      speed: 1.10,              // Vitesse apaisante
+      zoom: 0.8
+    })
+  </script>
+
 </body>
 </html>
