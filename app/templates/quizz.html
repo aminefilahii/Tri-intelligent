@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quizz — Dans quelle poubelle ? (5 bacs)</title>
+<style>
+  :root{
+    --bg1:#f8fafc; --bg2:#eef2ff; --text:#0f172a; --muted:#64748b;
+    --accent:#22c55e; --accent-2:#6366f1; --danger:#ef4444;
+    --card:#ffffff; --stroke:#e5e7eb; --shadow:0 10px 30px rgba(2,6,23,.12);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 800px at 20% 10%, var(--bg2), transparent 60%),
+      radial-gradient(1200px 800px at 80% 90%, #e0f2fe, transparent 60%),
+      linear-gradient(180deg, #fff, #f8fafc 60%);
+    display:grid; place-items:center; padding:24px;
+  }
+  .wrap{width:100%; max-width:980px}
+  header{text-align:center; margin-bottom:18px}
+  h1{margin:0 0 6px; font-weight:800; letter-spacing:.2px}
+  p.lead{margin:0; color:var(--muted)}
+  .card{
+    background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .panel{padding:18px}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .progress{height:8px; background:#eef2ff; border-radius:999px; overflow:hidden; margin:12px 0 4px}
+  .bar{height:100%; width:0%; background:linear-gradient(90deg,var(--accent-2),#14b8a6); transition:width .25s}
+  .meta{color:var(--muted); font-size:13px}
+  .qbox{display:grid; gap:14px}
+  .qtitle{font-size:20px; font-weight:700}
+  .choices{display:grid; gap:10px}
+  .choice{
+    appearance:none; border:1px solid var(--stroke); background:#fff; color:var(--text);
+    padding:12px 14px; border-radius:12px; text-align:left; cursor:pointer; transition:.18s;
+    display:flex; gap:10px; align-items:flex-start;
+  }
+  .choice:hover{transform:translateY(-1px); box-shadow:0 8px 24px rgba(2,6,23,.08)}
+  .choice[aria-checked="true"]{border-color:rgba(99,102,241,.5); box-shadow:inset 0 0 0 2px rgba(99,102,241,.25)}
+  .choice.correct{border-color:rgba(34,197,94,.6); background:rgba(34,197,94,.06)}
+  .choice.wrong{border-color:rgba(239,68,68,.6); background:rgba(239,68,68,.06)}
+  .btn{
+    appearance:none; border:1px solid transparent; background:#111827; color:#fff;
+    padding:11px 16px; border-radius:12px; font-weight:700; cursor:pointer; transition:.18s;
+    display:inline-flex; align-items:center; gap:10px; box-shadow:var(--shadow);
+  }
+  .btn:disabled{opacity:.5; cursor:not-allowed; box-shadow:none}
+  .btn.primary{background:var(--accent-2)}
+  .btn.ghost{background:#fff; color:var(--text); border-color:#cbd5e1}
+  .badge{display:inline-block; padding:6px 10px; border-radius:999px; font-weight:600; font-size:12px}
+  .badge.good{background:rgba(34,197,94,.1); color:#065f46; border:1px solid rgba(34,197,94,.35)}
+  .badge.bad{background:rgba(239,68,68,.08); color:#7f1d1d; border:1px solid rgba(239,68,68,.35)}
+  .explain{font-size:14px; color:#0f172a; background:#f8fafc; border:1px dashed #e2e8f0; border-radius:12px; padding:12px}
+  .grid2{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center}
+  .result{display:grid; gap:12px; text-align:center; padding:24px 18px;}
+  .score{font-size:48px; font-weight:800}
+  .list-review{display:grid; gap:10px}
+  .review-item{border:1px solid var(--stroke); border-radius:12px; padding:10px}
+  footer{margin-top:14px; text-align:center; color:var(--muted); font-size:12px}
+  @media (max-width: 720px){ .grid2{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Quizz — Dans quelle poubelle ?</h1>
+      <p class="lead">Une IA de reconnaissance d’images pourrait indiquer la bonne poubelle parmi 5 bacs. Teste-toi d’abord 🤖♻️</p>
+    </header>
+
+    <main class="card">
+      <div class="panel">
+        <div class="grid2">
+          <div>
+            <div class="progress" aria-label="Progression">
+              <div id="bar" class="bar"></div>
+            </div>
+            <div id="meta" class="meta">Question —/—</div>
+          </div>
+          <div class="row" style="justify-content:flex-end">
+            <button id="btnSkip" class="btn ghost">Passer</button>
+          </div>
+        </div>
+
+        <div class="qbox" id="qbox" aria-live="polite"></div>
+
+        <div class="row" style="margin-top:12px; justify-content:space-between">
+          <button id="btnReset" class="btn ghost" title="Recommencer">↺ Recommencer</button>
+          <div class="row">
+            <button id="btnCheck" class="btn primary">Valider</button>
+            <button id="btnNext" class="btn" disabled>Suivante →</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="result" class="panel" style="display:none;">
+        <div class="result">
+          <div class="score" id="scoreTxt">0/0</div>
+          <div id="scoreBadge" class="badge">—</div>
+          <div id="comment" class="meta"></div>
+          <div class="row" style="justify-content:center">
+            <button id="btnReplay" class="btn primary">Refaire le quizz</button>
+          </div>
+        </div>
+        <div class="panel" style="padding-top:0">
+          <h3>Révision</h3>
+          <div id="review" class="list-review"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer>Catégories utilisées : <b>Emballages & papiers</b>, <b>Verre</b>, <b>Plastique</b>, <b>Métal</b>, <b>Non recyclable</b>.</footer>
+  </div>
+
+<script>
+/* -----------------------
+   Catégories fixes (5)
+-------------------------*/
+const BINS = [
+  "Emballages & papiers",
+  "Verre",
+  "Plastique",
+  "Métal",
+  "Non recyclable",
+];
+
+/* -----------------------
+   Questions (réponses = index dans BINS)
+-------------------------*/
+const QUESTIONS = [
+  {
+    q: "Bouteille en verre (sans bouchon)",
+    a: BINS.indexOf("Verre"),
+    why: "Le verre d'emballage va en <b>Verre</b>. Retire bouchon/capsule."
+  },
+  {
+    q: "Canette de soda",
+    a: BINS.indexOf("Métal"),
+    why: "Canettes, boîtes de conserve, barquettes alu → <b>Métal</b>."
+  },
+  {
+    q: "Brique de lait / jus",
+    a: BINS.indexOf("Emballages & papiers"),
+    why: "Les briques sont des emballages multicouches → <b>Emballages & papiers</b>."
+  },
+  {
+    q: "Sac plastique fin (type sachet)",
+    a: BINS.indexOf("Plastique"),
+    why: "Les emballages plastiques (films, sachets, barquettes…) → <b>Plastique</b> si ta collectivité l'accepte."
+  },
+  {
+    q: "Pot de yaourt (PS)",
+    a: BINS.indexOf("Plastique"),
+    why: "Désormais la plupart des territoires trient <b>tous les emballages plastiques</b>."
+  },
+  {
+    q: "Feuille A4 / journal",
+    a: BINS.indexOf("Emballages & papiers"),
+    why: "Papiers, journaux, prospectus, cartons propres → <b>Emballages & papiers</b>."
+  },
+  {
+    q: "Barquette aluminium",
+    a: BINS.indexOf("Métal"),
+    why: "Aluminium d'emballage → <b>Métal</b>."
+  },
+  {
+    q: "Assiette en céramique cassée",
+    a: BINS.indexOf("Non recyclable"),
+    why: "La céramique ne va ni au verre, ni au bac jaune → <b>Non recyclable</b>."
+  },
+  {
+    q: "Bouteille d’huile en plastique (vidée, bouchon)",
+    a: BINS.indexOf("Plastique"),
+    why: "Bouteilles/flacons plastiques → <b>Plastique</b>. Vider, remettre le bouchon."
+  },
+  {
+    q: "Bocal en verre (sans couvercle)",
+    a: BINS.indexOf("Verre"),
+    why: "Bocaux et bouteilles → <b>Verre</b>."
+  },
+  {
+    q: "Aérosol métallique (vide)",
+    a: BINS.indexOf("Métal"),
+    why: "Les aérosols d'<b>emballage</b> vides → <b>Métal</b>."
+  },
+  {
+    q: "Carton de pizza très gras",
+    a: BINS.indexOf("Non recyclable"),
+    why: "Carton trop souillé → <b>Non recyclable</b>. Parties propres éventuelles → <b>Emballages & papiers</b>."
+  },
+];
+
+/* -----------------------
+   Génération des choix (5 fixes)
+-------------------------*/
+function renderChoices(selectedIdx){
+  return BINS.map((label, i)=>`
+    <button class="choice" data-i="${i}" aria-checked="${selectedIdx===i}">
+      <span style="opacity:.7">${String.fromCharCode(65+i)}.</span> <span>${label}</span>
+    </button>
+  `).join('');
+}
+
+/* -----------------------
+   État & helpers
+-------------------------*/
+let order = [];           // ordre aléatoire des questions
+let idx = 0;              // index courant (dans order)
+let picked = null;        // choix sélectionné
+let score = 0;
+let answered = false;     // a-t-on validé cette question ?
+let history = [];         // pour la révision finale
+
+const qbox = document.getElementById('qbox');
+const bar = document.getElementById('bar');
+const meta = document.getElementById('meta');
+const btnCheck = document.getElementById('btnCheck');
+const btnNext = document.getElementById('btnNext');
+const btnReset = document.getElementById('btnReset');
+const btnSkip = document.getElementById('btnSkip');
+const result = document.getElementById('result');
+const scoreTxt = document.getElementById('scoreTxt');
+const scoreBadge = document.getElementById('scoreBadge');
+const comment = document.getElementById('comment');
+const review = document.getElementById('review');
+const btnReplay = document.getElementById('btnReplay');
+
+function shuffle(n){ return Array.from({length:n},(_,i)=>i).sort(()=>Math.random()-0.5); }
+
+function updateProgress(){
+  const cur = idx + 1;
+  const total = order.length;
+  bar.style.width = `${(cur-1)/total*100}%`;
+  meta.textContent = `Question ${cur}/${total}`;
+}
+
+function renderQuestion(){
+  const q = QUESTIONS[ order[idx] ];
+  qbox.innerHTML = `
+    <div class="qtitle">${q.q}</div>
+    <div class="choices" role="group" aria-label="Choix">
+      ${renderChoices(picked)}
+    </div>
+    <div id="explain" class="explain" style="display:none;"></div>
+  `;
+  document.querySelectorAll('.choice').forEach(btn=>{
+    btn.onclick = ()=>{
+      if (answered) return;
+      picked = Number(btn.dataset.i);
+      document.querySelectorAll('.choice').forEach(b=>b.setAttribute('aria-checked','false'));
+      btn.setAttribute('aria-checked','true');
+    };
+  });
+  updateProgress();
+  btnCheck.disabled = false;
+  btnNext.disabled = true;
+  answered = false;
+}
+
+function checkAnswer(){
+  const q = QUESTIONS[ order[idx] ];
+  if (picked === null) { alert("Choisis une réponse 🙂"); return; }
+
+  answered = true;
+  const choiceButtons = [...document.querySelectorAll('.choice')];
+  choiceButtons.forEach((b,i)=>{
+    if (i===q.a) b.classList.add('correct');
+    if (picked===i && picked!==q.a) b.classList.add('wrong');
+  });
+
+  const ok = picked === q.a;
+  if (ok) score++;
+  const exp = document.getElementById('explain');
+  exp.style.display = 'block';
+  exp.innerHTML = `
+    ${ok ? '<span class="badge good">Bonne réponse</span>' : '<span class="badge bad">Mauvaise réponse</span>'}
+    <div style="margin-top:6px">${q.why}</div>
+  `;
+
+  history.push({
+    q: q.q,
+    picked: BINS[picked],
+    correct: BINS[q.a],
+    ok,
+    why: q.why
+  });
+
+  btnCheck.disabled = true;
+  btnNext.disabled = false;
+  bar.style.width = `${(idx+1)/order.length*100}%`;
+}
+
+function nextQuestion(){
+  picked = null;
+  idx++;
+  if (idx >= order.length) {
+    showResult();
+    return;
+  }
+  renderQuestion();
+}
+
+function showResult(){
+  document.querySelector('main .panel').style.display = 'none';
+  result.style.display = 'block';
+
+  scoreTxt.textContent = `${score}/${order.length}`;
+  const ratio = score / order.length;
+  let badgeText = "À retravailler";
+  let commentText = "Certaines consignes varient localement : vérifie ta collectivité.";
+  if (ratio >= .9) { badgeText = "Champion·ne du tri ♻️"; commentText = "Bravo ! Tu maîtrises les 5 bacs."; }
+  else if (ratio >= .7) { badgeText = "Très bien 👏"; commentText = "Encore quelques points et c’est parfait."; }
+  else if (ratio >= .5) { badgeText = "Peut mieux faire 🙂"; commentText = "Tu es sur la bonne voie !"; }
+
+  scoreBadge.textContent = badgeText;
+  scoreBadge.className = 'badge ' + (ratio>=.7 ? 'good' : 'bad');
+  comment.textContent = commentText;
+
+  review.innerHTML = history.map((h,i)=>`
+    <div class="review-item">
+      <div><b>Q${i+1}.</b> ${h.q}</div>
+      <div style="margin-top:6px">
+        ${h.ok ? '<span class="badge good">Correct</span>' : '<span class="badge bad">Incorrect</span>'}
+      </div>
+      <div style="margin-top:6px"><b>Ta réponse :</b> ${h.picked || '—'}</div>
+      <div><b>Bonne réponse :</b> ${h.correct}</div>
+      <div class="explain" style="margin-top:6px">${h.why}</div>
+    </div>
+  `).join('');
+}
+
+function resetAll(){
+  order = shuffle(QUESTIONS.length);
+  idx = 0;
+  picked = null;
+  score = 0;
+  history = [];
+  answered = false;
+  result.style.display = 'none';
+  const firstPanel = document.querySelector('main .panel');
+  firstPanel.style.display = 'block';
+  renderQuestion();
+}
+
+/* Events */
+btnCheck.onclick = checkAnswer;
+btnNext.onclick = nextQuestion;
+btnSkip.onclick = ()=>{ picked = -1; checkAnswer(); }; // compte comme faux
+btnReset.onclick = resetAll;
+btnReplay.onclick = resetAll;
+
+/* Start */
+resetAll();
+</script>
+</body>
+</html>
+

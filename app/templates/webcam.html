@@ -1,65 +1,408 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Classification en temps réel</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Classification - Tri‑intelligent</title>
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
-    body { background-color: #f8f9fa; }
-    video { border-radius: 8px; }
-    #result { font-size: 1.1rem; }
+    :root{
+      --card:rgba(255,255,255,.65); /* Un peu plus opaque pour la lisibilité */
+      --stroke:rgba(255,255,255,.5);
+      --text:#0f172a;
+      --muted:#64748b;
+      --accent:#198754; /* Vert Bootstrap */
+      --accent-2:#22c55e;
+      --danger:#ef4444;
+      --shadow:0 10px 30px rgba(2,6,23,.15);
+      --glass: blur(12px) saturate(130%);
+      --radius:16px;
+    }
+
+    #vanta-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+    }
+
+    /* Reset du body pour que la navbar touche les bords */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+      color: var(--text);
+      background: transparent;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar personnalisée pour matcher l'accueil */
+    .navbar {
+        background: rgba(25, 135, 84, 0.95) !important; /* Le vert Tri-intelligent */
+        backdrop-filter: blur(5px);
+        width: 100%;
+        z-index: 1000;
+    }
+
+    /* Conteneur principal centré */
+    .wrap {
+      max-width: 1000px; 
+      width: 100%;
+      margin: 30px auto; /* Marge en haut pour s'écarter de la navbar */
+      padding: 0 20px;
+      flex: 1; /* Pousse le footer vers le bas */
+    }
+
+    h1.page-title {
+        font-weight: 800;
+        color: #198754;
+        text-align: center;
+        margin-bottom: 5px;
+        font-size: 1.8rem;
+    }
+    
+    p.sub {
+        text-align: center;
+        color: var(--muted);
+        margin-bottom: 25px;
+    }
+
+    /* --- RESTE DU CSS (Inchangé) --- */
+    *{box-sizing:border-box}
+    
+    .grid{
+      display:grid; gap:20px;
+      grid-template-columns: 1.2fr .8fr;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter:var(--glass);
+      overflow:hidden;
+    }
+    .stage{position:relative; aspect-ratio:4/3; overflow:hidden}
+    .stage video,.stage canvas{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit:cover;
+      border-radius:var(--radius);
+    }
+    .mirror { transform: scaleX(-1); transform-origin:center; }
+    .hud{
+      position:absolute; inset:auto 0 0 0;
+      display:flex; gap:10px; justify-content:center;
+      padding:14px;
+      background:linear-gradient(180deg, rgba(3,7,18,0) 0%, rgba(3,7,18,.35) 70%);
+    }
+    .btn-cam{
+      appearance:none; border:1px solid transparent;
+      background:#fff; color:#0f172a;
+      padding:10px 14px; border-radius:12px;
+      font-weight:700; cursor:pointer;
+      box-shadow:0 6px 16px rgba(2,6,23,.1);
+      transition:.18s;
+      display:inline-flex; align-items:center; gap:10px;
+      text-decoration: none;
+    }
+    .btn-cam svg{width:18px; height:18px}
+    .btn-cam:hover{transform:translateY(-1px); box-shadow:0 10px 24px rgba(2,6,23,.18)}
+    .btn-cam:disabled{opacity:.5; cursor:not-allowed; transform:none}
+    .btn-cam.primary{background:var(--accent); color:#fff}
+    .btn-cam.green{background:var(--accent-2); color:#fff}
+    .btn-cam.outline{background:transparent; color:var(--text); border-color:rgba(25, 135, 84,.35)}
+    .btn-cam.danger{background:var(--danger); color:#fff}
+
+    .panel{padding:16px}
+    .meta{display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:13px}
+    .tag{
+      padding:6px 10px; border-radius:999px;
+      background:rgba(25, 135, 84,.08);
+      border:1px dashed rgba(25, 135, 84,.35)
+    }
+    .preview{display:grid; gap:12px; padding:16px}
+    .shot{
+      width:100%; aspect-ratio:4/3; object-fit:cover;
+      border-radius:12px; border:1px solid var(--stroke)
+    }
+    .row-btn{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .divider{height:1px; background:var(--stroke); margin:12px 0}
+    
+    .reticle{
+      position:absolute; inset:14% 14%;
+      border:2px solid rgba(255,255,255,.65);
+      border-radius:12px;
+      box-shadow:inset 0 0 0 1px rgba(15,23,42,.15);
+      pointer-events:none;
+    }
+    .flash{position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none}
+    .flash.active{animation:flash .26s ease}
+    @keyframes flash{0%{opacity:.0} 10%{opacity:.85} 100%{opacity:0}}
+    
+    footer{margin-top:auto; padding: 20px; text-align:center; color:var(--muted); font-size:12px}
+
+    /* RESULT UI */
+    .resultBox{
+      display:none; border-radius:12px; border:1px solid var(--stroke);
+      padding:12px; box-shadow:0 8px 20px rgba(2,6,23,.08);
+    }
+    .resultBox .title{font-weight:900; margin-bottom:6px}
+    .resultBox .line{color:var(--text); margin:2px 0}
+    .result-verre{ background:rgba(34,197,94,.14); border-color:rgba(34,197,94,.35); }
+    .result-plastique{ background:rgba(234,179,8,.16); border-color:rgba(234,179,8,.35); }
+    .result-metal{ background:rgba(148,163,184,.18); border-color:rgba(148,163,184,.35); }
+    .result-emballages{ background:rgba(59,130,246,.14); border-color:rgba(59,130,246,.35); }
+    .result-nonrecyclable{ background:rgba(15,23,42,.14); border-color:rgba(15,23,42,.30); }
+
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+    @media (max-width: 768px){
+      .stage{aspect-ratio:3/4}
+      .hud{gap:8px; padding:10px}
+    }
   </style>
 </head>
+
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+  <div id="vanta-bg"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
     <div class="container-fluid">
-      <a class="navbar-brand" href="/">Tri‑intelligent</a>
-    </div>
-  </nav>
-  <div class="container mt-4">
-    <div class="row justify-content-center">
-      <div class="col-md-6 text-center">
-        <h2 class="mb-3">Classification des déchets</h2>
-        <video id="video" autoplay playsinline width="320" height="240" class="mb-2 shadow"></video>
-        <canvas id="canvas" width="224" height="224" style="display:none;"></canvas>
-        <div class="d-grid gap-2 col-6 mx-auto my-3">
-          <button class="btn btn-primary" id="snap">Capturer &amp; Classifier</button>
-        </div>
-        <div id="result" class="alert d-none" role="alert"></div>
+      <a class="navbar-brand fw-bold" href="/">🌿 Tri‑intelligent</a>
+      
+      <div class="d-flex">
+          <a href="/quizz" class="btn btn-outline-light btn-sm fw-bold">🎯 Quiz</a>
       </div>
     </div>
-  </div>
+  </nav>
+
+  <div class="wrap">
+    
+    <h1 class="page-title">Scanner un déchet</h1>
+    <p class="sub">PC : webcam avant (miroir) • Mobile : caméra arrière</p>
+
+    <div class="grid">
+      <section class="card">
+        <div class="stage">
+          <video id="video" playsinline autoplay muted></video>
+          <canvas id="overlay" aria-hidden="true"></canvas>
+          <div class="reticle"></div>
+          <div class="flash" id="flash"></div>
+
+          <div class="hud">
+            <button id="btnOpen" class="btn-cam outline">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-width="2" d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/>
+                <circle cx="12" cy="13" r="4" stroke-width="2"/>
+              </svg>
+              Ouvrir
+            </button>
+
+            <button id="btnSnap" class="btn-cam primary" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="8" stroke-width="2"/>
+              </svg>
+              Photo
+            </button>
+
+            <button id="btnClose" class="btn-cam danger" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-width="2" d="M6 18 18 6M6 6l12 12"/>
+              </svg>
+              Fermer
+            </button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="meta">
+            <span id="res" class="tag">Résolution: —</span>
+            <span id="cam" class="tag">Caméra: —</span>
+            <span class="tag">API: <code id="apiUrlTag">/predict</code></span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="preview">
+          <div class="row-btn">
+            <button id="btnSend" class="btn-cam green" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-width="2" d="M4 12h14M14 6l6 6-6 6"/>
+              </svg>
+              Classifier
+            </button>
+            <button id="btnClear" class="btn-cam outline">Effacer</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <img id="photo" class="shot" alt="Aucune capture" />
+
+          <div id="resultBox" class="resultBox"></div>
+          <div id="respBox" class="resultBox" style="display:none;"></div>
+        </div>
+      </aside>
+    </div>
+
+  </div> <footer>Avec Green Brain, faites un tri intelligent très rapide.</footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.fog.min.js"></script>
+  
   <script>
-    const API_URL = "/predict";
+    // --- 1. CONFIG FOND (Couleurs écologie) ---
+    VANTA.FOG({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      highlightColor: 0xb8e9c0,
+      midtoneColor: 0x74c69d,
+      lowlightColor: 0x40916c,
+      baseColor: 0xffffff,
+      blurFactor: 0.8,
+      speed: 1.10,
+      zoom: 0.8
+    })
+
+    /* =========================
+       LOGIQUE JS IDENTIQUE
+       ========================= */
+    const API_URL = "/predict"; 
+    document.getElementById("apiUrlTag").textContent = API_URL;
+
     const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const resultDiv = document.getElementById('result');
+    const overlay = document.getElementById('overlay');
+    const flash = document.getElementById('flash');
+    const photo = document.getElementById('photo');
+    const btnOpen = document.getElementById('btnOpen');
+    const btnSnap = document.getElementById('btnSnap');
+    const btnClose = document.getElementById('btnClose');
+    const btnClear = document.getElementById('btnClear');
+    const btnSend = document.getElementById('btnSend');
+    const resTag = document.getElementById('res');
+    const camTag = document.getElementById('cam');
+    const resultBox = document.getElementById('resultBox');
+    const respBox = document.getElementById('respBox');
 
-    // Demande l'accès à la webcam
-    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-      video.srcObject = stream;
-    });
+    let stream = null;
+    let lastBlob = null;
 
-    document.getElementById('snap').onclick = async function() {
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, 224, 224);
-      canvas.toBlob(async blob => {
-        const form = new FormData();
-        form.append("file", blob, "frame.jpg");
-        const response = await fetch(API_URL, { method: "POST", body: form });
-        const data = await response.json();
-        resultDiv.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning', 'alert-secondary');
-        // Choisir une classe de couleur Bootstrap selon le bac
-        let alertClass = 'alert-secondary';
-        if (data.bin === 'Verre') alertClass = 'alert-success';
-        else if (data.bin === 'Plastique') alertClass = 'alert-warning';
-        else if (data.bin === 'Métal') alertClass = 'alert-secondary';
-        else if (data.bin === 'Emballages & papiers') alertClass = 'alert-info';
-        else if (data.bin === 'Non recyclable') alertClass = 'alert-dark';
-        resultDiv.classList.add('alert', alertClass);
-        resultDiv.innerHTML = `<strong>Type&nbsp;:</strong> ${data.label}<br><strong>Bac&nbsp;:</strong> ${data.bin}<br><strong>Confiance&nbsp;:</strong> ${(data.proba * 100).toFixed(1)} %`;
-      }, 'image/jpeg');
+    function isMobileDevice(){
+      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth <= 900);
+    }
+    function setMirror(){
+      if (isMobileDevice()){
+        video.classList.remove("mirror"); overlay.classList.remove("mirror");
+      } else {
+        video.classList.add("mirror"); overlay.classList.add("mirror");
+      }
+    }
+    window.addEventListener("resize", setMirror);
+
+    function setBtns(open, snap, close){
+      btnOpen.disabled = !open; btnSnap.disabled = !snap; btnClose.disabled = !close;
+    }
+
+    btnOpen.onclick = async () => {
+      try {
+        const constraints = { video: { facingMode: "environment" } }; // Default mobile
+        if(!isMobileDevice()) constraints.video = { width: 1024, height: 768 };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        video.setAttribute("playsinline", "");
+        await video.play();
+        
+        setMirror();
+        const t = stream.getVideoTracks()[0];
+        const s = t.getSettings?.() || {};
+        resTag.textContent = `Résolution: ${s.width||0}×${s.height||0}`;
+        camTag.textContent = `Caméra: ${t.label}`;
+
+        const ro = new ResizeObserver(() => {
+          overlay.width = video.clientWidth; overlay.height = video.clientHeight; drawOverlay();
+        });
+        ro.observe(video);
+        setBtns(false, true, true);
+      } catch (e) { alert("Erreur caméra : " + e.message); }
     };
+
+    btnSnap.onclick = () => {
+      if(!video.videoWidth) return;
+      flash.classList.add('active'); setTimeout(()=>flash.classList.remove('active'), 300);
+      
+      const c = document.createElement('canvas');
+      c.width = video.videoWidth; c.height = video.videoHeight;
+      const ctx = c.getContext('2d');
+      if(video.classList.contains('mirror')){ ctx.translate(c.width,0); ctx.scale(-1,1); }
+      ctx.drawImage(video,0,0);
+      
+      c.toBlob(b => {
+        lastBlob = b; photo.src = URL.createObjectURL(b);
+        btnSend.disabled = false; renderResult(null);
+      }, 'image/jpeg', 0.9);
+    };
+
+    btnSend.onclick = async () => {
+      if(!lastBlob) return;
+      btnSend.disabled = true; btnSend.textContent = "...";
+      try {
+        const fd = new FormData(); fd.append('file', lastBlob, 'capture.jpg');
+        const r = await fetch(API_URL, { method:'POST', body:fd });
+        const d = r.headers.get('content-type').includes('json') ? await r.json() : await r.text();
+        renderResult(r.ok ? d : {error:true, body:d});
+      } catch(e) { renderResult({error:true, message:e.message}); }
+      finally { btnSend.disabled = false; btnSend.textContent = "Classifier"; }
+    };
+
+    btnClose.onclick = () => {
+      if(stream) stream.getTracks().forEach(t=>t.stop());
+      video.srcObject = null; stream = null; setBtns(true, false, false);
+    };
+    btnClear.onclick = () => { photo.removeAttribute('src'); lastBlob=null; btnSend.disabled=true; renderResult(null); };
+
+    function renderResult(data){
+      resultBox.style.display = data ? "block" : "none";
+      if(!data) return;
+      if(data.error){
+         resultBox.className = "resultBox result-nonrecyclable";
+         resultBox.innerHTML = `<div class="title">Erreur</div><div class="line">${JSON.stringify(data)}</div>`;
+         return;
+      }
+      const bin = (data.bin||"").toLowerCase();
+      let cls = "result-metal";
+      if(bin.includes("verre")) cls="result-verre";
+      else if(bin.includes("plast")) cls="result-plastique";
+      else if(bin.includes("emball")) cls="result-emballages";
+      
+      resultBox.className = "resultBox " + cls;
+      resultBox.innerHTML = `
+        <div class="title">Résultat</div>
+        <div class="line">Type: ${data.label||"?"}</div>
+        <div class="line">Bac: <b>${data.bin||"?"}</b></div>
+        <div class="line">Confiance: ${(Number(data.proba||0)*100).toFixed(1)}%</div>`;
+    }
+
+    function drawOverlay(){
+      const ctx = overlay.getContext('2d');
+      const w=overlay.width, h=overlay.height;
+      ctx.clearRect(0,0,w,h);
+      const g = ctx.createRadialGradient(w/2,h/2, Math.min(w,h)*.25, w/2,h/2, Math.max(w,h)*.65);
+      g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(15,23,42,.25)');
+      ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(w/2, h*.1); ctx.lineTo(w/2, h*.9); ctx.moveTo(w*.1, h/2); ctx.lineTo(w*.9, h/2); ctx.stroke();
+    }
   </script>
 </body>
 </html>
