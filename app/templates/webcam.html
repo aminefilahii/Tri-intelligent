@@ -161,6 +161,10 @@
     .result-emballages{ background:rgba(59,130,246,.14); border-color:rgba(59,130,246,.35); }
     .result-nonrecyclable{ background:rgba(15,23,42,.14); border-color:rgba(15,23,42,.30); }
 
+    .result-danger  { background: rgba(231, 76, 60, 0.15); border-color: rgba(231, 76, 60, 0.4); color: #c0392b; } /* Rouge pour piles */
+    .result-textile { background: rgba(155, 89, 182, 0.15); border-color: rgba(155, 89, 182, 0.4); color: #8e44ad; } /* Violet pour vêtements */
+    .result-bio     { background: rgba(121, 85, 72, 0.15);  border-color: rgba(121, 85, 72, 0.4);  color: #5d4037; } /* Marron pour organique */
+
     @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
     @media (max-width: 768px){
       .stage{aspect-ratio:3/4}
@@ -374,23 +378,36 @@
     function renderResult(data){
       resultBox.style.display = data ? "block" : "none";
       if(!data) return;
+      
       if(data.error){
          resultBox.className = "resultBox result-nonrecyclable";
          resultBox.innerHTML = `<div class="title">Erreur</div><div class="line">${JSON.stringify(data)}</div>`;
          return;
       }
+
+      // --- NOUVELLE LOGIQUE DE COULEURS ---
       const bin = (data.bin||"").toLowerCase();
-      let cls = "result-metal";
-      if(bin.includes("verre")) cls="result-verre";
-      else if(bin.includes("plast")) cls="result-plastique";
-      else if(bin.includes("emball")) cls="result-emballages";
-      
+      let cls = "result-nonrecyclable"; // Gris par défaut
+
+      if(bin.includes("jaune"))      cls = "result-plastique";   // Jaune
+      else if(bin.includes("vert"))  cls = "result-verre";       // Vert
+      else if(bin.includes("textile")) cls = "result-textile";   // Violet
+      else if(bin.includes("piles")) cls = "result-danger";      // Rouge
+      else if(bin.includes("organique") || bin.includes("compost")) cls = "result-bio"; // Marron
+
+      // --- AFFICHAGE ---
       resultBox.className = "resultBox " + cls;
       resultBox.innerHTML = `
-        <div class="title">Résultat</div>
-        <div class="line">Type: ${data.label||"?"}</div>
-        <div class="line">Bac: <b>${data.bin||"?"}</b></div>
-        <div class="line">Confiance: ${(Number(data.proba||0)*100).toFixed(1)}%</div>`;
+        <div class="title">Résultat de l'analyse</div>
+        <div class="line">Objet détecté : <strong>${data.label||"?"}</strong></div>
+        
+        <div class="line" style="font-size: 1.1em; font-weight:bold; margin-top: 12px; padding: 12px; background: rgba(255,255,255,0.6); border-radius: 8px; border:1px solid rgba(0,0,0,0.05);">
+            ${data.instruction || "Pas de consigne spécifique"}
+        </div>
+
+        <div class="line" style="font-size: 0.85em; margin-top:8px; opacity:0.7;">
+            Indice de confiance : ${(Number(data.proba||0)*100).toFixed(1)}%
+        </div>`;
     }
 
     function drawOverlay(){

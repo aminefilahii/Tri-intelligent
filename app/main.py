@@ -64,45 +64,65 @@ state = torch.load(state_path, map_location=device)
 model.load_state_dict(state, strict=True)
 model.eval().to(device)
 
-# ---------- Règles de bacs ----------
+# ---------- Règles de bacs & Instructions ----------
 BIN_RULES = {
-    # Mots-clés -> Bac
-    "glass": "Verre",
-    "verre": "Verre",
+    # Bac Jaune (Recyclable)
+    "cardboard": "Bac Jaune",
+    "paper": "Bac Jaune",
+    "plastic": "Bac Jaune",
+    "metal": "Bac Jaune",
 
-    "plastic": "Plastique",
-    "plastique": "Plastique",
+    # Bac Vert (Verre)
+    "glass": "Bac Vert",
 
-    "metal": "Métal",
-    "can": "Métal",
-    "aluminum": "Métal",
+    # Spécial (Textile)
+    "clothes": "Textile",
+    "shoes": "Textile",
 
-    "paper": "Emballages & papiers",
-    "cardboard": "Emballages & papiers",
-    "papier": "Emballages & papiers",
-    "emballage": "Emballages & papiers",
+    # Spécial (Dangereux / Électronique)
+    "battery": "Spécial Piles",
 
-    # Autres classes fréquentes du dataset v2
-    "battery": "Non recyclable",
-    "trash": "Non recyclable",
-    "clothes": "Non recyclable",
-    "shoes": "Non recyclable",
-    "biological": "Non recyclable",
+    # Organique / Compost
+    "biological": "Organique",
+
+    # Tout venant
+    "trash": "Poubelle Noire"
 }
+
+# Couleurs pour l'affichage dans l'interface (CSS)
+# On utilise ces clés dans BIN_RULES
 BIN_COLORS = {
-    "Verre": "#2ecc71",
-    "Plastique": "#f39c12",
-    "Métal": "#bdc3c7",
-    "Emballages & papiers": "#3498db",
-    "Non recyclable": "#7f8c8d",
+    "Bac Jaune": "#f1c40f",      # Jaune
+    "Bac Vert": "#27ae60",       # Vert
+    "Textile": "#9b59b6",        # Violet
+    "Spécial Piles": "#e74c3c",  # Rouge
+    "Organique": "#795548",      # Marron
+    "Poubelle Noire": "#34495e"  # Gris foncé
+}
+
+# Les phrases précises à afficher à l'écran
+INSTRUCTIONS = {
+    "Bac Jaune": "À mettre dans le BAC DE TRI",
+    "Bac Vert": "À jeter dans le BAC À VERRE",
+    "Textile": "À déposer dans une BORNE TEXTILE",
+    "Spécial Piles": "Point de collecte SPÉCIFIQUE",
+    "Organique": "Au COMPOST",
+    "Poubelle Noire": "À jeter dans la POUBELLE NORMALE"
 }
 
 def to_bin(label: str) -> str:
+    """Trouve le bac correspondant au label."""
     l = label.lower()
+    # On cherche correspondance exacte ou partielle
+    if l in BIN_RULES:
+        return BIN_RULES[l]
+    
+    # Recherche partielle si jamais le label est complexe
     for key, bin_name in BIN_RULES.items():
         if key in l:
             return bin_name
-    return "Non recyclable"
+            
+    return "Poubelle Noire"
 
 # ---------- App FastAPI ----------
 app = FastAPI(title="Tri-intelligent API (ResNet50)")
@@ -125,7 +145,6 @@ async def webcam_page(request: Request) -> HTMLResponse:
     template_name = "webcam.html" if (TEMPLATES_DIR / "webcam.html").exists() else "webcam.html"
     return templates.TemplateResponse(template_name, {"request": request})
 
-# --- NOUVELLE ROUTE AJOUTÉE ICI ---
 @app.get("/quizz", response_class=HTMLResponse)
 async def quizz_page(request: Request) -> HTMLResponse:
     """Page du Quiz."""
@@ -136,7 +155,7 @@ async def quizz_page(request: Request) -> HTMLResponse:
 # ---------- API prédiction ----------
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)) -> Dict[str, str | float]:
-    """Prend une image et renvoie la prédiction + bac."""
+    """Prend une image et renvoie la prédiction + bac + INSTRUCTION."""
     image_bytes = await file.read()
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     x = transform(img).unsqueeze(0).to(device)
@@ -148,12 +167,15 @@ async def predict(file: UploadFile = File(...)) -> Dict[str, str | float]:
 
     label = idx2class[idx]
     bin_name = to_bin(label)
+    instruction_text = INSTRUCTIONS.get(bin_name, "Vérifiez les consignes locales")
+    color_hex = BIN_COLORS.get(bin_name, "#7f8c8d")
 
     return {
         "label": label,
         "proba": round(prob, 4),
         "bin": bin_name,
-        "bin_color": BIN_COLORS.get(bin_name, "#7f8c8d"),
+        "bin_color": color_hex,
+        "instruction": instruction_text  # <--- C'EST CETTE LIGNE QUI VOUS MANQUE !
     }
 
 # ---------- Lancement local ----------
