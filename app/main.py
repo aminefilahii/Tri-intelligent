@@ -2,24 +2,13 @@
 Tri-intelligent — API FastAPI (version ResNet50)
 
 - Pages:
-    GET  /         -> index.html (présentation)
-    GET  /webcam   -> webcam.html (capture et classification)
+    GET  /          -> index.html (présentation)
+    GET  /webcam    -> webcam.html (capture et classification)
+    GET  /quizz     -> quizz.html (le quiz)
 - API:
-    POST /predict  -> JSON {label, proba, bin, bin_color}
+    POST /predict   -> JSON {label, proba, bin, bin_color}
 
 Dépendances: fastapi, uvicorn, jinja2, python-multipart, torch, torchvision, pillow
-Arborescence attendue:
-project/
-  app/
-    main.py                 <-- ce fichier
-    templates/
-      index.html
-      webcam.html
-    static/
-      style.css
-  checkpoints/
-    class_mapping.json
-    model_resnet50.pth
 """
 
 from __future__ import annotations
@@ -127,7 +116,6 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR if TEMPLATES_DIR.exists() el
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
     """Page d'accueil."""
-    # cherche index.html dans templates, sinon à la racine du dossier courant
     template_name = "index.html" if (TEMPLATES_DIR / "index.html").exists() else "index.html"
     return templates.TemplateResponse(template_name, {"request": request})
 
@@ -135,6 +123,14 @@ async def home(request: Request) -> HTMLResponse:
 async def webcam_page(request: Request) -> HTMLResponse:
     """Page webcam."""
     template_name = "webcam.html" if (TEMPLATES_DIR / "webcam.html").exists() else "webcam.html"
+    return templates.TemplateResponse(template_name, {"request": request})
+
+# --- NOUVELLE ROUTE AJOUTÉE ICI ---
+@app.get("/quizz", response_class=HTMLResponse)
+async def quizz_page(request: Request) -> HTMLResponse:
+    """Page du Quiz."""
+    # Assurez-vous que le fichier s'appelle bien 'quizz.html' dans le dossier templates
+    template_name = "quizz.html" if (TEMPLATES_DIR / "quizz.html").exists() else "quizz.html"
     return templates.TemplateResponse(template_name, {"request": request})
 
 # ---------- API prédiction ----------
